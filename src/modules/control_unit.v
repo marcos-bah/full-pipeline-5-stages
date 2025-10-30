@@ -6,7 +6,7 @@ module control_unit(
     output PCSrc,
     output [1:0] ResultSrc,
     output MemWrite,
-    output [2:0] ALUControl,
+    output [3:0] ALUControl,
     output ALUSrc,
     output [1:0] ImmSrc,
     output RegWrite
@@ -31,6 +31,7 @@ alu_decoder AD(
     .ALUOp(ALUOp),
     .funct3(funct3),
     .funct7b5(funct7b5),
+    .opb5(op[5]),
     .ALUControl(ALUControl)
 );
 

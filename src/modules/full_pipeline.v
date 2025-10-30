@@ -28,7 +28,7 @@ module full_pipeline(
     reg         ID_EX_ALUSrc, ID_EX_MemWrite, ID_EX_RegWrite, ID_EX_Branch;
     reg  [1:0]  ID_EX_ALUOp, ID_EX_ResultSrc;
 
-    wire [2:0]  EX_ALUControl;
+    wire [3:0]  EX_ALUControl;
     wire [31:0] EX_SrcB, EX_ALUResult;
     wire        EX_Zero;
     wire [31:0] EX_BranchTarget;

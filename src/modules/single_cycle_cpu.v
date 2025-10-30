@@ -8,7 +8,7 @@ module single_cycle_cpu (
     wire [31:0] SrcA, SrcB, ALUResult, ReadData, Result;
     wire Zero, PCSrc, MemWrite, ALUSrc, RegWrite;
     wire [1:0] ResultSrc, ImmSrc;
-    wire [2:0] ALUControl;
+    wire [3:0] ALUControl;
 
     // ===== Program Counter =====
     pc pc_reg (

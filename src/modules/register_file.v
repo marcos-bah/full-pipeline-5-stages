@@ -20,11 +20,11 @@ module register_file (
             for (i = 0; i < 32; i = i + 1) begin
                 registers[i] <= 32'b0;
             end
-            registers[9] <= 32'd6;
+            //registers[9] <= 32'd6;
         end else if (WE3 && (A3 != 0)) begin
             registers[A3] <= WD3; // x0 is read-only
-            $display("Register x%0d written with value %0d", A3, WD3);
         end
+        $display("clk=%b WE3=%b A3=%d WD3=%h", clk, WE3, A3, WD3);
     end
 
 endmodule

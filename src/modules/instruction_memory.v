@@ -27,12 +27,12 @@ module instruction_memory(
         memory[2] = 32'h00000393; // addi t2, x0, 0
 
         // loop
-        memory[3] = 32'h28028A63; // beq t0, x0, end
-        memory[4] = 32'h000E2383; // lw  t3, 0(t2)
+        memory[3] = 32'h00028A63; // beq t0, x0, end
+        memory[4] = 32'h0003AE03; // lw  t3, 0(t2)
         memory[5] = 32'h01C30333; // add t1, t1, t3
         memory[6] = 32'h00438393; // addi t2, t2, 4
         memory[7] = 32'hfff28293; // addi t0, t0, -1
-        memory[8] = 32'hfe0006e3; // beq x0, x0, loop
+        memory[8] = 32'h00000363; // beq x0, x0, loop
 
         // end
         memory[9] = 32'h00000013; // end: addi x0, x0, 0
