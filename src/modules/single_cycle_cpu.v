@@ -1,303 +1,261 @@
-
-/*
- * MÓDULO TOP (ESTRUTURAL) - v3 (Corrigido)
- * -----------------------
- * Módulo top (o usuário chama de single_cycle_cpu.v)
- * Padronizado para usar 'rst' e nomes corretos de módulos.
- */
-module single_cycle_cpu(
-    input  wire clk,
-    input  wire rst // <-- CORRIGIDO: Padronizado para 'rst'
+module single_cycle_cpu (
+    input  wire CLK,
+    input  wire rst
 );
-// =================================================================
-    // --- Sinais (Wires) ---
-    // =================================================================
 
-    // --- Estágio IF (Fetch) ---
-    wire [31:0] PC_IF, PCNext_IF, PCPlus4_IF, Instr_IF;
-    
-    // --- Estágio ID (Decode) ---
-    wire [31:0] PC_ID, PCPlus4_ID, Instr_ID;
-    wire [31:0] RF_RD1_ID, RF_RD2_ID, ImmExt_ID;
-    wire [1:0]  ALUOp_ID, ImmSrc_ID, ResultSrc_ID;
-    wire        ALUSrc_ID, MemWrite_ID, RegWrite_ID, Branch_ID;
-    wire [6:0]  Opcode_ID = Instr_ID[6:0];
-    wire [4:0]  Rs1_ID    = Instr_ID[19:15];
-    wire [4:0]  Rs2_ID    = Instr_ID[24:20];
-    wire [4:0]  Rd_ID     = Instr_ID[11:7];
-    wire [2:0]  Funct3_ID = Instr_ID[14:12];
-    wire        Funct7_5_ID = Instr_ID[30];
-    
-    // Sinais de depuração do Register File
-    wire [31:0] t0, t1, t2, t3;
+    // controle / sinais entre estágios
+    wire        s_PCSrc;
+    wire        s_PCSrc_reg;
+    wire        s_PCSrc_reg_mem;
+    wire        s_ResultSrc;
+    wire        s_ResultSrc_reg;
+    wire        s_ResultSrc_reg_mem;
+    wire        s_MemWrite;
+    wire        s_MemWrite_reg;
+    wire        s_MemWrite_reg_mem;
+    wire [2:0]  s_ALUControl;
+    wire [2:0]  s_ALUControl_reg;
+    wire [2:0]  s_ALUControl_reg_mem;
+    wire        s_ALUSrc;
+    wire        s_ALUSrc_reg;
+    wire        s_ALUSrc_reg_mem;
+    wire [1:0]  s_ImmSrc;
+    wire [1:0]  s_ImmSrc_reg;
+    wire [1:0]  s_ImmSrc_reg_mem;
+    wire        s_RegWrite;
+    wire        s_RegWrite_reg;
+    wire        s_RegWrite_reg_mem;
 
-    // --- Estágio EX (Execute) ---
-    wire [31:0] PC_EX, PCPlus4_EX, SrcA_EX, SrcB_EX, ImmExt_EX;
-    wire [31:0] SrcB_Mux_EX; 
-    wire [4:0]  Rd_EX;
-    wire [2:0]  Funct3_EX;
-    wire        Funct7_5_EX;
-    wire [1:0]  ALUOp_EX, ResultSrc_EX;
-    wire        ALUSrc_EX, MemWrite_EX, RegWrite_EX, Branch_EX;
-    wire [3:0]  ALUControl_EX;
-    wire [31:0] ALUResult_EX;
-    wire        Zero_EX;
-    wire [31:0] BranchTarget_EX;
-    wire        BranchTaken_EX;
+    // sinais de branch/jump
+    wire        s_branchFlag;
+    wire        s_branchFlag_ex;
+    wire        s_jumpFlag;
+    wire [31:0] s_jumpAddress;
+    wire        s_flush_INST_CTRL_ID;
 
-    // --- Estágio MEM (Memory) ---
-    wire [31:0] ALUResult_MEM, WriteData_MEM, BranchTarget_MEM, PCPlus4_MEM;
-    wire [4:0]  Rd_MEM;
-    wire [1:0]  ResultSrc_MEM;
-    wire        MemWrite_MEM, RegWrite_MEM, BranchTaken_MEM;
-    wire [31:0] ReadData_MEM;
+    // instrucoes / PC
+    wire [31:0] s_Instr;
+    wire [31:0] s_Instr_reg;
+    wire [4:0]  s_Instr_ctrl_idex;
+    wire [4:0]  s_Instr_ctrl_memwb;
+    wire [31:0] s_PC;
 
-    // --- Estágio WB (Write Back) ---
-    wire [31:0] ALUResult_WB, ReadData_WB, PCPlus4_WB;
-    wire [4:0]  Rd_WB;
-    wire [1:0]  ResultSrc_WB;
-    wire        RegWrite_WB;
-    wire [31:0] Result_WB;
+    // dados / ALU / memoria
+    wire [31:0] s_ImmExt;
+    wire [31:0] s_ImmExt_reg;
+    wire [31:0] s_WriteData;
+    wire [31:0] s_SrcA;
+    wire [31:0] s_RD1_reg;
+    wire [31:0] s_RD2_reg;
+    wire [31:0] s_SrcB;
+    wire        s_Zero;
+    wire [31:0] s_ALUResult;
+    wire [31:0] s_ALUResult_reg;
+    wire [31:0] s_ReadData;
+    wire [31:0] s_ReadData_reg;
+    wire [31:0] s_Result;
 
+    wire [2:0]  s_funct3_idex;
 
-    // =================================================================
-    // Estágio IF (Instruction Fetch)
-    // =================================================================
+    localparam DATA_WIDTH = 32;
+    localparam ADDR_WIDTH = 5;
+    localparam REG_COUNT  = 32;
 
-    assign PCNext_IF = BranchTaken_MEM ? BranchTarget_MEM : PCPlus4_IF;
-
-    pc pc_reg (
-        .clk(clk),
-        .rst(rst), // <-- CORRIGIDO
-        .PCNext(PCNext_IF),
-        .PC(PC_IF)
+    // program counter
+    pc programCounter (
+        .CLK(CLK),
+        .rst(rst),
+        .branchFlag(s_branchFlag),
+        .zeroFlag(s_Zero),
+        .jumpFlag(s_jumpFlag),
+        .jumpAddress(s_jumpAddress),
+        .branchOffset(s_ImmExt),
+        .PC(s_PC),
+        .flush_INST_CTRL_ID(s_flush_INST_CTRL_ID)
     );
 
-    adder pc_plus_4 (
-        .a(PC_IF),
-        .b(32'd4),
-        .y(PCPlus4_IF)
+    // instruction memory -> pipeline reg
+    instruction_memory instMem (
+        .A(s_PC),
+        .RD(s_Instr_reg)
     );
 
-    instruction_memory imem (
-        .A(PC_IF),
-        .RD(Instr_IF)
+    register #(.N(DATA_WIDTH)) reg_INST (
+        .CLK(CLK),
+        .rst(rst | s_flush_INST_CTRL_ID),
+        .d(s_Instr_reg),
+        .q(s_Instr)
     );
 
-    // =================================================================
-    // Registrador de Pipeline IF/ID
-    // =================================================================
-    reg_if_id if_id_pipe (
-        .clk(clk),
-        .rst(rst), // <-- CORRIGIDO
-        .en(1'b1),    // Sem stall, por enquanto
-        .flush(1'b0), // Sem flush, por enquanto
-        .PC_in(PC_IF),
-        .PCPlus4_in(PCPlus4_IF),
-        .Instr_in(Instr_IF),
-        .PC_out(PC_ID),
-        .PCPlus4_out(PCPlus4_ID),
-        .Instr_out(Instr_ID)
+    // register file
+    register_file #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ADDR_WIDTH(ADDR_WIDTH),
+        .REG_COUNT(REG_COUNT)
+    ) regFile (
+        .CLK(CLK),
+        .WE3(s_RegWrite),
+        .WD3(s_Result),
+        .A1(s_Instr[19:15]),
+        .A2(s_Instr[24:20]),
+        .A3(s_Instr_ctrl_memwb),
+        .RD1(s_RD1_reg),
+        .RD2(s_RD2_reg)
     );
 
-    // =================================================================
-    // Estágio ID (Instruction Decode)
-    // =================================================================
-
-    main_decoder decoder (
-        .op(Opcode_ID),
-        .RegWrite(RegWrite_ID),
-        .ImmSrc(ImmSrc_ID),
-        .ALUSrc(ALUSrc_ID),
-        .MemWrite(MemWrite_ID),
-        .ResultSrc(ResultSrc_ID),
-        .Branch(Branch_ID),
-        .ALUOp(ALUOp_ID)
+    // regfile outputs -> id/ex
+    register #(.N(DATA_WIDTH)) reg_regFileA_IDEX (
+        .CLK(CLK),
+        .rst(rst),
+        .d(s_RD1_reg),
+        .q(s_SrcA)
     );
 
-    register_file rf (
-        .clk(clk),
-        .rst(rst), // <-- CORRIGIDO
-        .WE3(RegWrite_WB),  
-        .A1(Rs1_ID),        
-        .A2(Rs2_ID),        
-        .A3(Rd_WB),         
-        .WD3(Result_WB),    
-        .RD1(RF_RD1_ID),
-        .RD2(RF_RD2_ID),
-        // Conectando saídas de depuração
-        .t0(t0),
-        .t1(t1),
-        .t2(t2),
-        .t3(t3)
+    register #(.N(DATA_WIDTH)) reg_regFileB_IDEX (
+        .CLK(CLK),
+        .rst(rst),
+        .d(s_RD2_reg),
+        .q(s_WriteData)
     );
 
-    extend imm_gen (
-        .Instr(Instr_ID[31:7]),
-        .ImmSrc(ImmSrc_ID),
-        .ImmExt(ImmExt_ID)
+    // extend immediato
+    extend ext1 (
+        .in(s_Instr[31:7]),
+        .ImmSrc(s_ImmSrc_reg),
+        .out(s_ImmExt_reg)
     );
 
-    // =================================================================
-    // Registrador de Pipeline ID/EX
-    // =================================================================
-    reg_id_ex id_ex_pipe (
-        .clk(clk),
-        .rst(rst), // <-- CORRIGIDO
-        .en(1'b1),    // Sem stall
-        .flush(1'b0), // Sem flush
-        
-        // Dados
-        .PC_in(PC_ID),
-        .PCPlus4_in(PCPlus4_ID),
-        .SrcA_in(RF_RD1_ID),
-        .SrcB_in(RF_RD2_ID),
-        .ImmExt_in(ImmExt_ID),
-        .Rd_in(Rd_ID),
-        .Funct3_in(Funct3_ID),
-        .Funct7_5_in(Funct7_5_ID),
-        
-        // Controle
-        .ALUOp_in(ALUOp_ID),
-        .ALUSrc_in(ALUSrc_ID),
-        .MemWrite_in(MemWrite_ID),
-        .RegWrite_in(RegWrite_ID),
-        .Branch_in(Branch_ID),
-        .ResultSrc_in(ResultSrc_ID),
-        
-        // Saídas...
-        .PC_out(PC_EX),
-        .PCPlus4_out(PCPlus4_EX),
-        .SrcA_out(SrcA_EX),
-        .SrcB_out(SrcB_EX),
-        .ImmExt_out(ImmExt_EX),
-        .Rd_out(Rd_EX),
-        .Funct3_out(Funct3_EX),
-        .Funct7_5_out(Funct7_5_EX),
-        
-        .ALUOp_out(ALUOp_EX),
-        .ALUSrc_out(ALUSrc_EX),
-        .MemWrite_out(MemWrite_EX),
-        .RegWrite_out(RegWrite_EX),
-        .Branch_out(Branch_EX),
-        .ResultSrc_out(ResultSrc_EX)
+    register #(.N(DATA_WIDTH)) reg_IMM (
+        .CLK(CLK),
+        .rst(rst),
+        .d(s_ImmExt_reg),
+        .q(s_ImmExt)
     );
 
-    // =================================================================
-    // Estágio EX (Execute)
-    // =================================================================
-
-    alu_decoder alu_dec (
-        .ALUOp(ALUOp_EX),
-        .funct3(Funct3_EX),
-        .funct7b5(Funct7_5_EX),
-        .ALUControl(ALUControl_EX)
+    // controlador
+    control_2 ctrl1 (
+        .PCSrc(s_PCSrc_reg),
+        .ResultSrc(s_ResultSrc_reg),
+        .MemWrite(s_MemWrite_reg),
+        .ALUControl(s_ALUControl_reg),
+        .ALUSrc(s_ALUSrc_reg),
+        .ImmSrc(s_ImmSrc_reg),
+        .RegWrite(s_RegWrite_reg),
+        .op(s_Instr[6:0]),
+        .funct3(s_Instr[14:12]),
+        .funct7(s_Instr[30]),
+        .Zero(s_Zero),
+        .Jump(s_jumpFlag),
+        .jumpAddress(s_jumpAddress),
+        .Branch(s_branchFlag_ex)
     );
 
-    // O mux 2-para-1 que você forneceu (mux.v)
-    mux2_1 alu_src_mux ( // <-- CORRIGIDO (nome do módulo)
-        .in0(SrcB_EX),    
-        .in1(ImmExt_EX),  
-        .sel(ALUSrc_EX),
-        .d(SrcB_Mux_EX)
+    // id/ex pipeline register (controle + campos)
+    register #(.N(19)) reg_ctrl_IDEX (
+        .CLK(CLK),
+        .rst(rst),
+        .d({
+            s_PCSrc_reg,
+            s_ResultSrc_reg,
+            s_MemWrite_reg,
+            s_ALUControl_reg,
+            s_ALUSrc_reg,
+            s_ImmSrc_reg,
+            s_RegWrite_reg,
+            s_Instr[11:7],
+            s_branchFlag_ex,
+            s_Instr[14:12]
+        }),
+        .q({
+            s_PCSrc_reg_mem,
+            s_ResultSrc_reg_mem,
+            s_MemWrite_reg_mem,
+            s_ALUControl_reg_mem,
+            s_ALUSrc_reg_mem,
+            s_ImmSrc_reg_mem,
+            s_RegWrite_reg_mem,
+            s_Instr_ctrl_idex,
+            s_branchFlag,
+            s_funct3_idex
+        })
     );
 
-    alu alu_unit (
-        .SrcA(SrcA_EX),
-        .SrcB(SrcB_Mux_EX),
-        .ALUControl(ALUControl_EX),
-        .ALUResult(ALUResult_EX),
-        .Zero(Zero_EX)
+    // mem/wb pipeline register (controle + rd)
+    register #(.N(15)) reg_ctrl_MEMWB (
+        .CLK(CLK),
+        .rst(rst),
+        .d({
+            s_PCSrc_reg_mem,
+            s_ResultSrc_reg_mem,
+            s_MemWrite_reg_mem,
+            s_ALUControl_reg_mem,
+            s_ALUSrc_reg_mem,
+            s_ImmSrc_reg_mem,
+            s_RegWrite_reg_mem,
+            s_Instr_ctrl_idex
+        }),
+        .q({
+            s_PCSrc,
+            s_ResultSrc,
+            s_MemWrite,
+            s_ALUControl,
+            s_ALUSrc,
+            s_ImmSrc,
+            s_RegWrite,
+            s_Instr_ctrl_memwb
+        })
     );
 
-    adder branch_target_adder (
-        .a(PC_EX),
-        .b(ImmExt_EX),
-        .y(BranchTarget_EX)
+    // mux e alu
+    mux mux_alu (
+        .in0(s_WriteData),
+        .in1(s_ImmExt),
+        .sel(s_ALUSrc_reg_mem),
+        .d(s_SrcB)
     );
 
-    assign BranchTaken_EX = Branch_EX & Zero_EX;
-
-    // =================================================================
-    // Registrador de Pipeline EX/MEM
-    // =================================================================
-    reg_ex_mem ex_mem_pipe (
-        .clk(clk),
-        .rst(rst), // <-- CORRIGIDO
-        .en(1'b1),    // Sem stall
-        .flush(1'b0), // Sem flush
-        
-        .ALUResult_in(ALUResult_EX),
-        .WriteData_in(SrcB_EX), 
-        .BranchTarget_in(BranchTarget_EX),
-        .PCPlus4_in(PCPlus4_EX),
-        .Rd_in(Rd_EX),
-        
-        .MemWrite_in(MemWrite_EX),
-        .RegWrite_in(RegWrite_EX),
-        .BranchTaken_in(BranchTaken_EX),
-        .ResultSrc_in(ResultSrc_EX),
-        
-        .ALUResult_out(ALUResult_MEM),
-        .WriteData_out(WriteData_MEM),
-        .BranchTarget_out(BranchTarget_MEM),
-        .PCPlus4_out(PCPlus4_MEM),
-        .Rd_out(Rd_MEM),
-        
-        .MemWrite_out(MemWrite_MEM),
-        .RegWrite_out(RegWrite_MEM),
-        .BranchTaken_out(BranchTaken_MEM),
-        .ResultSrc_out(ResultSrc_MEM)
+    alu alu1 (
+        .SrcA(s_SrcA),
+        .SrcB(s_SrcB),
+        .ALUControl(s_ALUControl_reg_mem),
+        .Zero(s_Zero),
+        .ALUResult(s_ALUResult_reg)
     );
 
-    // =================================================================
-    // Estágio MEM (Memory)
-    // =================================================================
-
-    data_memory dmem (
-        .clk(clk),
-        .MemWrite(MemWrite_MEM),
-        .A(ALUResult_MEM),  
-        .WD(WriteData_MEM), 
-        .RD(ReadData_MEM)   
+    register #(.N(DATA_WIDTH)) reg_alu_EX (
+        .CLK(CLK),
+        .rst(rst),
+        .d(s_ALUResult_reg),
+        .q(s_ALUResult)
     );
 
-    // =================================================================
-    // Registrador de Pipeline MEM/WB
-    // =================================================================
-    reg_mem_wb mem_wb_pipe (
-        .clk(clk),
-        .rst(rst), // <-- CORRIGIDO
-        .en(1'b1),    // Sem stall
-        .flush(1'b0), // Sem flush
-        
-        .ALUResult_in(ALUResult_MEM),
-        .ReadData_in(ReadData_MEM),
-        .PCPlus4_in(PCPlus4_MEM),
-        .Rd_in(Rd_MEM),
-        
-        .RegWrite_in(RegWrite_MEM),
-        .ResultSrc_in(ResultSrc_MEM),
-        
-        .ALUResult_out(ALUResult_WB),
-        .ReadData_out(ReadData_WB),
-        .PCPlus4_out(PCPlus4_WB),
-        .Rd_out(Rd_WB),
-        
-        .RegWrite_out(RegWrite_WB),
-        .ResultSrc_out(ResultSrc_WB)
+    // memória de dados little-endian
+    memTopo32LittleEndian #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ADDRESS_WIDTH(4)
+    ) dataMem (
+        .clk(CLK),
+        .size(s_funct3_idex[1:0]),
+        .addr(s_ALUResult_reg[3:0]),
+        .din(s_WriteData),
+        .sign_ext(s_funct3_idex[2]),
+        .writeEnable(s_MemWrite_reg_mem),
+        .dout(s_ReadData_reg)
     );
 
-    // =================================================================
-    // Estágio WB (Write Back)
-    // =================================================================
+    register #(.N(DATA_WIDTH)) reg_DATA_MEMORY (
+        .CLK(CLK),
+        .rst(rst),
+        .d(s_ReadData_reg),
+        .q(s_ReadData)
+    );
 
-    mux3_1 wb_mux (
-        .in_0(ALUResult_WB), 
-        .in_1(ReadData_WB),   
-        .in_2(PCPlus4_WB),    
-        .sel(ResultSrc_WB),
-        .y(Result_WB)
+    // escolhe entre ALU e memória
+    mux mux_ALU_MEM (
+        .in0(s_ALUResult),
+        .in1(s_ReadData),
+        .sel(s_ResultSrc),
+        .d(s_Result)
     );
 
 endmodule
