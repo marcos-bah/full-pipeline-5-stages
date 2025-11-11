@@ -39,6 +39,7 @@ module single_cycle_cpu (
     wire [4:0]  s_Instr_ctrl_idex;
     wire [4:0]  s_Instr_ctrl_memwb;
     wire [31:0] s_PC;
+    wire [31:0] s_PC_Target;
 
     // dados / ALU / memoria
     wire [31:0] s_ImmExt;
@@ -227,6 +228,14 @@ module single_cycle_cpu (
         .rst(rst),
         .d(s_ALUResult_reg),
         .q(s_ALUResult)
+    );
+
+    adder somaTarget (
+        .a(s_PC),
+        .b(s_ImmExt),
+        .cin(1'b0),
+        .result(s_PC_Target),
+        .cout()
     );
 
     // memória de dados little-endian

@@ -9,18 +9,20 @@ module single_cycle_cpu_tb();
 
     initial begin
         $readmemh("/home/marcosbarbosa/Documents/verilog/full-pipeline-5-stages/src/inputs/input.txt", dut.instMem.memory);
+        $dumpfile("build/single_cycle_cpu_tb.vcd");
+        $dumpvars(0, single_cycle_cpu_tb);
     end
 
     initial begin
-        dut.dataMem.mem_inst.mem_byte0.mem[0] = 8'h12;
-        dut.dataMem.mem_inst.mem_byte1.mem[0] = 8'h34;
-        dut.dataMem.mem_inst.mem_byte2.mem[0] = 8'h78;
-        dut.dataMem.mem_inst.mem_byte3.mem[0] = 8'h56;
+        // dut.dataMem.mem_inst.mem_byte0.mem[0] = 8'h12;
+        // dut.dataMem.mem_inst.mem_byte1.mem[0] = 8'h34;
+        // dut.dataMem.mem_inst.mem_byte2.mem[0] = 8'h78;
+        // dut.dataMem.mem_inst.mem_byte3.mem[0] = 8'h56;
 
-        dut.dataMem.mem_inst.mem_byte0.mem[1] = 8'hF0;
-        dut.dataMem.mem_inst.mem_byte1.mem[1] = 8'hDE;
-        dut.dataMem.mem_inst.mem_byte2.mem[1] = 8'hBC;
-        dut.dataMem.mem_inst.mem_byte3.mem[1] = 8'h9A;
+        // dut.dataMem.mem_inst.mem_byte0.mem[1] = 8'hF0;
+        // dut.dataMem.mem_inst.mem_byte1.mem[1] = 8'hDE;
+        // dut.dataMem.mem_inst.mem_byte2.mem[1] = 8'hBC;
+        // dut.dataMem.mem_inst.mem_byte3.mem[1] = 8'h9A;
     end
 
     initial clk = 1'b0;

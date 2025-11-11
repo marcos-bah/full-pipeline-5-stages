@@ -7,7 +7,7 @@ VCD = $(BUILD_DIR)/$(TOP).vcd
 OUT = $(BUILD_DIR)/$(TOP).out
 
 # ======= Lista de arquivos =======
-SRC := $(shell find $(SRC_DIR) -type f -name '*.v' -print | tr '\n' ' ')
+SRC := $(shell find $(SRC_DIR) -type f -name '*.v' -print | sort | tr '\n' ' ')
 
 # ======= Comandos =======
 all: run
