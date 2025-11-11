@@ -17,7 +17,7 @@ module alu(
         .a   (SrcA),
         .b   (b_mux),
         .cin (adder_cin),
-        .sum (adder_out),
+        .result (adder_out),
         .cout ()
     );
 

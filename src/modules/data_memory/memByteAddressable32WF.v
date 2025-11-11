@@ -1,5 +1,3 @@
-`timescale 1ns / 100ps
-
 module memByteAddressable32WF #(
     parameter DATA_WIDTH = 32,
     parameter ADDRESS_WIDTH = 4

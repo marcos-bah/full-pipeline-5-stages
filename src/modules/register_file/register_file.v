@@ -3,7 +3,7 @@ module register_file #(
     parameter ADDR_WIDTH = 5,
     parameter REG_COUNT  = 32
 )(
-    input  wire                  CLK,
+    input  wire                  clk,
     input  wire                  WE3,
     input  wire [ADDR_WIDTH-1:0] A1,
     input  wire [ADDR_WIDTH-1:0] A2,
@@ -19,7 +19,7 @@ module register_file #(
     assign RD2 = (A2 != 0) ? registers[A2] : 0;
 
     // sincrona
-    always @(posedge CLK) begin
+    always @(posedge clk) begin
         if (WE3 && A3 != 0)
             registers[A3] <= WD3;
     end

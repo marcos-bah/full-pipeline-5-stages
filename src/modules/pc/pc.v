@@ -1,5 +1,5 @@
 module pc (
-    input  wire        CLK,
+    input  wire        clk,
     input  wire        rst,
     input  wire        branchFlag,
     input  wire        zeroFlag,
@@ -18,25 +18,25 @@ module pc (
 
     assign flush_INST_CTRL_ID = or_out;
 
-    mux_4 mux_pc (
-        .in0(32'd4),
-        .in1(jumpAddress),
-        .in2(branchOffset),
-        .in3(branchOffset),
+    mux4_1 mux_pc (
+        .in_0(32'd4),
+        .in_1(jumpAddress),
+        .in_2(branchOffset),
+        .in_3(branchOffset),
         .sel({and_out, jumpFlag}),
-        .d(next_pc)
+        .y(next_pc)
     );
 
     adder add_pc4 (
-        .a_in(next_pc),
-        .b_in(PC),
-        .car_in(1'b0),
+        .a(next_pc),
+        .b(PC),
+        .cin(1'b0),
         .result(pc_add4),
-        .car_out()
+        .cout()
     );
 
     register #(.N(32)) reg_pc (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst),
         .d(pc_add4),
         .q(PC)

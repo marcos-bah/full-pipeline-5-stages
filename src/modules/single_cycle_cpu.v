@@ -1,5 +1,5 @@
 module single_cycle_cpu (
-    input  wire CLK,
+    input  wire clk,
     input  wire rst
 );
 
@@ -63,7 +63,7 @@ module single_cycle_cpu (
 
     // program counter
     pc programCounter (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst),
         .branchFlag(s_branchFlag),
         .zeroFlag(s_Zero),
@@ -81,7 +81,7 @@ module single_cycle_cpu (
     );
 
     register #(.N(DATA_WIDTH)) reg_INST (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst | s_flush_INST_CTRL_ID),
         .d(s_Instr_reg),
         .q(s_Instr)
@@ -93,7 +93,7 @@ module single_cycle_cpu (
         .ADDR_WIDTH(ADDR_WIDTH),
         .REG_COUNT(REG_COUNT)
     ) regFile (
-        .CLK(CLK),
+        .clk(clk),
         .WE3(s_RegWrite),
         .WD3(s_Result),
         .A1(s_Instr[19:15]),
@@ -105,14 +105,14 @@ module single_cycle_cpu (
 
     // regfile outputs -> id/ex
     register #(.N(DATA_WIDTH)) reg_regFileA_IDEX (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst),
         .d(s_RD1_reg),
         .q(s_SrcA)
     );
 
     register #(.N(DATA_WIDTH)) reg_regFileB_IDEX (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst),
         .d(s_RD2_reg),
         .q(s_WriteData)
@@ -120,20 +120,20 @@ module single_cycle_cpu (
 
     // extend immediato
     extend ext1 (
-        .in(s_Instr[31:7]),
+        .Instr(s_Instr[31:7]),
         .ImmSrc(s_ImmSrc_reg),
-        .out(s_ImmExt_reg)
+        .ImmExt(s_ImmExt_reg)
     );
 
     register #(.N(DATA_WIDTH)) reg_IMM (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst),
         .d(s_ImmExt_reg),
         .q(s_ImmExt)
     );
 
     // controlador
-    control_2 ctrl1 (
+    control_unit ctrl1 (
         .PCSrc(s_PCSrc_reg),
         .ResultSrc(s_ResultSrc_reg),
         .MemWrite(s_MemWrite_reg),
@@ -152,7 +152,7 @@ module single_cycle_cpu (
 
     // id/ex pipeline register (controle + campos)
     register #(.N(19)) reg_ctrl_IDEX (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst),
         .d({
             s_PCSrc_reg,
@@ -182,7 +182,7 @@ module single_cycle_cpu (
 
     // mem/wb pipeline register (controle + rd)
     register #(.N(15)) reg_ctrl_MEMWB (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst),
         .d({
             s_PCSrc_reg_mem,
@@ -207,7 +207,7 @@ module single_cycle_cpu (
     );
 
     // mux e alu
-    mux mux_alu (
+    mux2_1 mux_alu (
         .in0(s_WriteData),
         .in1(s_ImmExt),
         .sel(s_ALUSrc_reg_mem),
@@ -223,7 +223,7 @@ module single_cycle_cpu (
     );
 
     register #(.N(DATA_WIDTH)) reg_alu_EX (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst),
         .d(s_ALUResult_reg),
         .q(s_ALUResult)
@@ -234,7 +234,7 @@ module single_cycle_cpu (
         .DATA_WIDTH(DATA_WIDTH),
         .ADDRESS_WIDTH(4)
     ) dataMem (
-        .clk(CLK),
+        .clk(clk),
         .size(s_funct3_idex[1:0]),
         .addr(s_ALUResult_reg[3:0]),
         .din(s_WriteData),
@@ -244,14 +244,14 @@ module single_cycle_cpu (
     );
 
     register #(.N(DATA_WIDTH)) reg_DATA_MEMORY (
-        .CLK(CLK),
+        .clk(clk),
         .rst(rst),
         .d(s_ReadData_reg),
         .q(s_ReadData)
     );
 
     // escolhe entre ALU e memória
-    mux mux_ALU_MEM (
+    mux2_1 mux_ALU_MEM (
         .in0(s_ALUResult),
         .in1(s_ReadData),
         .sel(s_ResultSrc),

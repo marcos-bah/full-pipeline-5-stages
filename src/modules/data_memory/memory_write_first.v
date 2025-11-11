@@ -1,5 +1,3 @@
-`timescale 1ns / 100ps
-
 module memory_write_first #(
     parameter DATA_WIDTH = 8,
     parameter ADDRESS_WIDTH = 4

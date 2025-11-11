@@ -1,14 +1,14 @@
-module top_tb_ativ_5();
-    reg CLK;
+module single_cycle_cpu_tb();
+    reg clk;
     reg rst;
 
-    top_ativ_5 dut(
-        .CLK(CLK),
+    single_cycle_cpu dut (
+        .clk(clk),
         .rst(rst)
     );
 
     initial begin
-        $readmemh("/home/aluno/cidigital/aula_14_23_pipe_risc_5/pipe_5_RISC/instruction_memory/data_5.txt", dut.instMem.rom);
+        $readmemh("/home/marcosbarbosa/Documents/verilog/full-pipeline-5-stages/src/inputs/input.txt", dut.instMem.memory);
     end
 
     initial begin
@@ -23,17 +23,18 @@ module top_tb_ativ_5();
         dut.dataMem.mem_inst.mem_byte3.mem[1] = 8'h9A;
     end
 
-    initial   CLK = 1'b0;
-    always #5 CLK = ~CLK;
-
-    initial rst = 1'b1;
-    initial #10 rst = 1'b0;
+    initial clk = 1'b0;
+    always #5 clk = ~clk;
 
     initial begin
-        $display("Iniciando teste da microarquitetura RISC-V Pipeline...");
-        #1000
-        $display("Encerrando teste da microarquitetura RISC...");
-        $stop;
+        rst = 1'b1;
+        #10 rst = 1'b0;
     end
 
+    initial begin
+        $display("\nTeste da microarquitetura RISC-V Pipeline iniciado");
+        #1000
+        $display("\nTeste da microarquitetura RISC-V Pipeline encerrado");
+        $finish;
+    end
 endmodule
